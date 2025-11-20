@@ -37,6 +37,7 @@ export default function CoffeeAppAI() {
   });
 
   const [showForm, setShowForm] = useState(false);
+  const [selectedCoffee, setSelectedCoffee] = useState(null);
   const [filter, setFilter] = useState("Alle");
   const [searchTerm, setSearchTerm] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -259,7 +260,9 @@ export default function CoffeeAppAI() {
         {/* List */}
         <div className="space-y-5">
           {filteredCoffees.map((coffee) => (
-            <div key={coffee.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-stone-100 relative">
+            <div key={coffee.id} 
+                 onClick={() => setSelectedCoffee(coffee)}
+                 className="bg-white rounded-xl overflow-hidden shadow-sm border border-stone-100 relative hover:shadow-md transition-all cursor-pointer group">
               <div className="flex flex-col sm:flex-row">
                 {coffee.image && (
                   <div className="h-32 sm:h-auto sm:w-32 bg-stone-200 flex-shrink-0 relative overflow-hidden">
@@ -301,13 +304,13 @@ export default function CoffeeAppAI() {
                   </div>
                   {coffee.notes && <div className="text-sm text-stone-600 italic">"{coffee.notes}"</div>}
                   {coffee.link && (
-                    <a href={coffee.link} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                    <a href={coffee.link} onClick={(e) => e.stopPropagation()} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
                       <ExternalLink size={12} /> Zum Shop
                     </a>
                   )}
                 </div>
               </div>
-              <button onClick={() => handleDelete(coffee.id)} className="absolute top-2 right-2 p-2 text-stone-300 hover:text-red-500 rounded-full hover:bg-red-50"><Trash2 size={16} /></button>
+              <button onClick={(e) => { e.stopPropagation(); handleDelete(coffee.id); }} className="absolute bottom-2 right-2 p-2 text-stone-300 hover:text-red-500 rounded-full hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16} /></button>
             </div>
           ))}
         </div>
@@ -407,6 +410,94 @@ export default function CoffeeAppAI() {
                 <textarea name="notes" value={formData.notes} onChange={handleInputChange} rows="2" className="w-full p-3 bg-white rounded-lg border border-stone-200 outline-none text-sm resize-none" placeholder="Notizen..." />
                 <button type="submit" className="w-full bg-stone-800 hover:bg-stone-900 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center gap-2">Eintrag Speichern</button>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* DETAIL MODAL */}
+      {selectedCoffee && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedCoffee(null)}>
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            
+            <div className="relative h-48 bg-stone-200">
+              {selectedCoffee.image ? (
+                <img src={selectedCoffee.image} alt={selectedCoffee.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-stone-400">
+                  <Coffee size={48} />
+                </div>
+              )}
+              <button onClick={() => setSelectedCoffee(null)} className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors">
+                <X size={20} />
+              </button>
+              <div className="absolute bottom-4 left-4 flex gap-2">
+                 <span className="px-2 py-1 rounded text-xs bg-white/90 text-stone-800 font-bold uppercase tracking-wider shadow-sm">{selectedCoffee.method}</span>
+                 <span className="px-2 py-1 rounded text-xs bg-white/90 text-stone-800 font-bold shadow-sm">{selectedCoffee.date}</span>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto">
+              <h2 className="text-2xl font-bold text-stone-800 leading-tight mb-1">{selectedCoffee.name}</h2>
+              <p className="text-lg text-stone-500 font-medium mb-6">{selectedCoffee.roaster}</p>
+
+              <div className="space-y-6">
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-stone-50 p-3 rounded-xl border border-stone-100">
+                    <div className="text-xs text-stone-400 uppercase font-bold mb-1">Maschine</div>
+                    <div className="font-medium text-stone-700">{selectedCoffee.machine || "-"}</div>
+                  </div>
+                  <div className="bg-stone-50 p-3 rounded-xl border border-stone-100">
+                    <div className="text-xs text-stone-400 uppercase font-bold mb-1">Mahlgrad</div>
+                    <div className="font-medium text-stone-700">{selectedCoffee.grind || "-"}</div>
+                  </div>
+                </div>
+
+                <div className="bg-stone-50 p-4 rounded-xl border border-stone-100">
+                   <div className="flex justify-between items-center mb-2">
+                      <div className="text-xs text-stone-400 uppercase font-bold">Geschmack</div>
+                      <div className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded">
+                        {selectedCoffee.tasteProfile < 35 ? "Sauer / Fruchtig" : selectedCoffee.tasteProfile > 65 ? "Bitter / Dunkel" : "Ausgewogen"}
+                      </div>
+                   </div>
+                   <TasteBar value={selectedCoffee.tasteProfile} />
+                </div>
+
+                <div className="flex items-center justify-between bg-stone-50 p-4 rounded-xl border border-stone-100">
+                   <div>
+                      <div className="text-xs text-stone-400 uppercase font-bold mb-1">Rezept</div>
+                      <div className="flex items-center gap-2 font-medium text-stone-700">
+                        <span>{selectedCoffee.gramsIn}g In</span>
+                        <span className="text-stone-300">/</span>
+                        <span>{selectedCoffee.gramsOut}g Out</span>
+                      </div>
+                   </div>
+                   <div className="text-right">
+                      <div className="text-xs text-stone-400 uppercase font-bold mb-1">Ratio</div>
+                      <div className="font-bold text-amber-600 text-lg">{calculateRatio(selectedCoffee.gramsIn, selectedCoffee.gramsOut)}</div>
+                   </div>
+                </div>
+
+                {selectedCoffee.notes && (
+                  <div>
+                    <div className="text-xs text-stone-400 uppercase font-bold mb-2">Notizen</div>
+                    <div className="text-stone-600 italic bg-yellow-50 p-4 rounded-xl border border-yellow-100">
+                      "{selectedCoffee.notes}"
+                    </div>
+                  </div>
+                )}
+
+                {selectedCoffee.link && (
+                   <a href={selectedCoffee.link} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-3 bg-blue-50 text-blue-600 font-bold rounded-xl hover:bg-blue-100 transition-colors">
+                      <ExternalLink size={18} /> Zum Shop
+                   </a>
+                )}
+
+                <button onClick={() => { handleDelete(selectedCoffee.id); setSelectedCoffee(null); }} className="w-full py-3 text-red-500 font-bold rounded-xl border border-red-100 hover:bg-red-50 transition-colors flex items-center justify-center gap-2">
+                  <Trash2 size={18} /> Eintrag löschen
+                </button>
+
+              </div>
             </div>
           </div>
         </div>

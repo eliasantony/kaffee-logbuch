@@ -1,10 +1,9 @@
 "use client";
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Coffee, Plus, Trash2, Droplet, Search, X, ChevronDown, Scale, Camera, Link as LinkIcon, ExternalLink, Loader2, Sparkles, Zap, Settings as SettingsIcon, ShieldAlert, Save } from 'lucide-react';
 
-// ---------------------------------------------------------
-// MOCK DATA
-// ---------------------------------------------------------
+// --- MOCK DATA ---
 const INITIAL_DATA = [
   {
     id: 1,
@@ -23,25 +22,26 @@ const INITIAL_DATA = [
   }
 ];
 
-const BrewingMethods = ["Alle", "Siebträger", "V60", "French Press", "Aeropress", "Mokka Kanne", "Chemex", "Cold Brew"];
-const Machines = ["Rocket Appartamento", "Sage Barista Express", "La Marzocco Linea Mini", "Gaggia Classic", "DeLonghi Dedica", "Handfilter", "AeroPress Go"];
+const BrewingMethods = ["Alle", "Siebträger", "French Press", "Filter", "Mokka Kanne", "Cold Brew"];
+const Machines = ["Rocket Appartamento", "Sage Barista Express", "Philips Baristina", "Bialetti", "Handfilter"];
 
 export default function CoffeeAppAI() {
   // --- STATE ---
-  const [coffees, setCoffees] = useState(INITIAL_DATA);
-
-  // API Key State (Lokal gespeichert, nicht im Code!)
-  const [userApiKey, setUserApiKey] = useState('');
-
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [coffees, setCoffees] = useState(() => {
+    // Wir prüfen, ob wir im Browser sind (Next.js Server Side Rendering Prevention)
+    if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('coffee_log_data_v3');
+        return saved ? JSON.parse(saved) : INITIAL_DATA;
+    }
+    return INITIAL_DATA;
+  });
 
   const [showForm, setShowForm] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [filter, setFilter] = useState("Alle");
   const [searchTerm, setSearchTerm] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiError, setAiError] = useState(null);
-  const [cooldown, setCooldown] = useState(0); // Rate Limit Schutz
+  const [cooldown, setCooldown] = useState(0);
   const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -59,32 +59,9 @@ export default function CoffeeAppAI() {
   });
 
   // --- EFFECTS ---
-  // Load data from localStorage on mount
   useEffect(() => {
-    const savedCoffees = localStorage.getItem('coffee_log_data_v3');
-    if (savedCoffees) {
-      setCoffees(JSON.parse(savedCoffees));
-    }
-    
-    const savedKey = localStorage.getItem('user_gemini_key');
-    if (savedKey) {
-      setUserApiKey(savedKey);
-    }
-    
-    setIsLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem('coffee_log_data_v3', JSON.stringify(coffees));
-    }
-  }, [coffees, isLoaded]);
-
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem('user_gemini_key', userApiKey);
-    }
-  }, [userApiKey, isLoaded]);
+    localStorage.setItem('coffee_log_data_v3', JSON.stringify(coffees));
+  }, [coffees]);
 
   // Cooldown Timer
   useEffect(() => {
@@ -95,45 +72,42 @@ export default function CoffeeAppAI() {
   }, [cooldown]);
 
   // --- HANDLERS ---
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // --- GEMINI API INTEGRATION (CLIENT SIDE) ---
-  // HINWEIS FÜR VERCEL:
-  // Wenn du dies auf Vercel hostest, verschiebe diesen Fetch-Aufruf in eine 
-  // API Route (z.B. /api/analyze), damit der Key auf dem Server bleibt.
+  // --- GEMINI API INTEGRATION (SERVER SIDE ROUTE) ---
   const analyzeImageWithGemini = async (base64Image) => {
-    if (!userApiKey) {
-      setAiError("Bitte erst API Key in den Einstellungen (Zahnrad) hinterlegen.");
-      setIsAnalyzing(false);
-      return;
-    }
-
+    // Spam Schutz
     if (cooldown > 0) {
-      setAiError(`Bitte warte noch ${cooldown}s (Spam Schutz).`);
+      setAiError(`Bitte warte noch ${cooldown}s.`);
       setIsAnalyzing(false);
       return;
     }
 
     try {
-      const base64Data = base64Image.split(',')[1]; 
-
+      // Wir senden das Bild an DEINE eigene API Route (/app/api/analyze/route.js)
+      // Der API Key wird dort auf dem Server sicher genutzt.
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base64Data: base64Image.split(',')[1] }) // Wir senden nur die Bilddaten
+        body: JSON.stringify({ base64Data: base64Image.split(',')[1] })
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error?.message || "API Fehler");
+        throw new Error(errorData.error || "Server Fehler");
       }
 
       const data = await response.json();
+      
+      // Die Antwort kommt hier direkt als JSON vom Server-Teil an
+      // Wir müssen nur noch den Text aus der Gemini-Struktur holen
       const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      if (!textResponse) throw new Error("Keine Antwort von AI erhalten");
+
       const jsonString = textResponse.replace(/```json|```/g, '').trim();
       const result = JSON.parse(jsonString);
 
@@ -144,11 +118,10 @@ export default function CoffeeAppAI() {
         notes: result.notes || prev.notes
       }));
 
-      // Setze Cooldown (Client-Side Rate Limit)
-      setCooldown(15); 
+      setCooldown(15); // 15 Sekunden Pause erzwingen
 
     } catch (error) {
-      console.error("Gemini Error:", error);
+      console.error("Analysis Error:", error);
       setAiError(`Fehler: ${error.message}`);
     } finally {
       setIsAnalyzing(false);
@@ -218,7 +191,6 @@ export default function CoffeeAppAI() {
   });
 
   // --- COMPONENTS ---
-
   const TasteBar = ({ value }) => {
     let label = "Optimal";
     let colorClass = "bg-green-500";
@@ -250,19 +222,12 @@ export default function CoffeeAppAI() {
             <div>
               <h1 className="text-xl font-bold tracking-wide leading-none">Barista Log</h1>
               <span className="text-xs text-stone-400 font-normal flex items-center gap-1">
-                <ShieldAlert size={10} className="text-green-400" /> Secure Edition
+                <ShieldAlert size={10} className="text-green-400" /> Vercel Edition
               </span>
             </div>
           </div>
           
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setShowSettings(true)}
-              className="p-2 text-stone-400 hover:text-white transition-colors rounded-full hover:bg-stone-800"
-              title="Einstellungen & API Key"
-            >
-              <SettingsIcon size={20} />
-            </button>
             <button 
               onClick={() => setShowForm(true)}
               className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-full flex items-center gap-2 text-sm font-semibold shadow-sm active:scale-95 transition-all"
@@ -290,19 +255,6 @@ export default function CoffeeAppAI() {
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" size={16} />
           </div>
         </div>
-
-        {/* Settings Hint if no Key */}
-        {!userApiKey && (
-          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 items-start">
-             <div className="bg-amber-100 p-2 rounded-full text-amber-600 mt-1"><Zap size={18} /></div>
-             <div>
-               <h3 className="font-bold text-amber-900 text-sm">AI Features aktivieren</h3>
-               <p className="text-xs text-amber-800 mt-1">
-                 Um die automatische Foto-Erkennung zu nutzen, klicke oben auf das Zahnrad <SettingsIcon size={10} className="inline"/> und gib deinen eigenen API Key ein.
-               </p>
-             </div>
-          </div>
-        )}
 
         {/* List */}
         <div className="space-y-5">
@@ -360,43 +312,6 @@ export default function CoffeeAppAI() {
           ))}
         </div>
       </main>
-
-      {/* API KEY SETTINGS MODAL */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg text-stone-800 flex items-center gap-2">
-                <SettingsIcon size={20} className="text-stone-500"/> Einstellungen
-              </h3>
-              <button onClick={() => setShowSettings(false)}><X size={24} className="text-stone-400" /></button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Google Gemini API Key</label>
-                <input 
-                  type="password" 
-                  value={userApiKey} 
-                  onChange={(e) => setUserApiKey(e.target.value)}
-                  className="w-full p-3 bg-stone-50 rounded-lg border border-stone-200 focus:border-amber-500 outline-none text-sm font-mono"
-                  placeholder="AIza..."
-                />
-                <p className="text-[10px] text-stone-400 mt-2 leading-relaxed">
-                  Der Key wird <strong>nur in deinem Browser</strong> (LocalStorage) gespeichert. 
-                  Wenn du die App auf Vercel hostest, nutze Environment Variables.
-                </p>
-              </div>
-              <button 
-                onClick={() => setShowSettings(false)} 
-                className="w-full bg-stone-800 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
-              >
-                <Save size={16} /> Speichern
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* MAIN FORM MODAL */}
       {showForm && (

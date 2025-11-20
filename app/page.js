@@ -38,6 +38,7 @@ export default function CoffeeAppAI() {
 
   const [showForm, setShowForm] = useState(false);
   const [selectedCoffee, setSelectedCoffee] = useState(null);
+  const [editingId, setEditingId] = useState(null);
   const [filter, setFilter] = useState("Alle");
   const [searchTerm, setSearchTerm] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -146,12 +147,18 @@ export default function CoffeeAppAI() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const newCoffee = {
-      id: Date.now(),
-      ...formData,
-      date: new Date().toISOString().split('T')[0]
-    };
-    setCoffees([newCoffee, ...coffees]);
+    
+    if (editingId) {
+      setCoffees(coffees.map(c => c.id === editingId ? { ...c, ...formData } : c));
+    } else {
+      const newCoffee = {
+        id: Date.now(),
+        ...formData,
+        date: new Date().toISOString().split('T')[0]
+      };
+      setCoffees([newCoffee, ...coffees]);
+    }
+    
     setShowForm(false);
     resetForm();
   };
@@ -170,8 +177,28 @@ export default function CoffeeAppAI() {
       link: '',
       image: null
     });
+    setEditingId(null);
     setIsAnalyzing(false);
     setAiError(null);
+  };
+
+  const handleEdit = (coffee) => {
+    setFormData({
+      name: coffee.name,
+      roaster: coffee.roaster,
+      machine: coffee.machine,
+      grind: coffee.grind,
+      method: coffee.method,
+      tasteProfile: coffee.tasteProfile,
+      notes: coffee.notes,
+      gramsIn: coffee.gramsIn,
+      gramsOut: coffee.gramsOut,
+      link: coffee.link,
+      image: coffee.image
+    });
+    setEditingId(coffee.id);
+    setSelectedCoffee(null);
+    setShowForm(true);
   };
 
   const handleDelete = (id) => {
@@ -222,9 +249,6 @@ export default function CoffeeAppAI() {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-wide leading-none">Barista Log</h1>
-              <span className="text-xs text-stone-400 font-normal flex items-center gap-1">
-                <ShieldAlert size={10} className="text-green-400" /> Vercel Edition
-              </span>
             </div>
           </div>
           
@@ -321,7 +345,7 @@ export default function CoffeeAppAI() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-stone-100 flex justify-between items-center bg-stone-50 rounded-t-2xl">
-              <h2 className="text-lg font-bold text-stone-800 flex items-center gap-2">Neuer Eintrag</h2>
+              <h2 className="text-lg font-bold text-stone-800 flex items-center gap-2">{editingId ? "Eintrag bearbeiten" : "Neuer Eintrag"}</h2>
               <button onClick={() => {setShowForm(false); resetForm();}}><X size={24} className="text-stone-400" /></button>
             </div>
             
@@ -408,7 +432,7 @@ export default function CoffeeAppAI() {
                 </div>
 
                 <textarea name="notes" value={formData.notes} onChange={handleInputChange} rows="2" className="w-full p-3 bg-white rounded-lg border border-stone-200 outline-none text-sm resize-none" placeholder="Notizen..." />
-                <button type="submit" className="w-full bg-stone-800 hover:bg-stone-900 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center gap-2">Eintrag Speichern</button>
+                <button type="submit" className="w-full bg-stone-800 hover:bg-stone-900 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center gap-2">{editingId ? "Änderungen Speichern" : "Eintrag Speichern"}</button>
               </form>
             </div>
           </div>
@@ -493,9 +517,14 @@ export default function CoffeeAppAI() {
                    </a>
                 )}
 
-                <button onClick={() => { handleDelete(selectedCoffee.id); setSelectedCoffee(null); }} className="w-full py-3 text-red-500 font-bold rounded-xl border border-red-100 hover:bg-red-50 transition-colors flex items-center justify-center gap-2">
-                  <Trash2 size={18} /> Eintrag löschen
-                </button>
+                <div className="flex gap-3">
+                  <button onClick={() => handleEdit(selectedCoffee)} className="flex-1 py-3 text-stone-700 font-bold rounded-xl border border-stone-200 hover:bg-stone-50 transition-colors flex items-center justify-center gap-2">
+                    <SettingsIcon size={18} /> Bearbeiten
+                  </button>
+                  <button onClick={() => { handleDelete(selectedCoffee.id); setSelectedCoffee(null); }} className="flex-1 py-3 text-red-500 font-bold rounded-xl border border-red-100 hover:bg-red-50 transition-colors flex items-center justify-center gap-2">
+                    <Trash2 size={18} /> Löschen
+                  </button>
+                </div>
 
               </div>
             </div>

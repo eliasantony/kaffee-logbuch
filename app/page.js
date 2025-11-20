@@ -28,15 +28,12 @@ const Machines = ["Rocket Appartamento", "Sage Barista Express", "La Marzocco Li
 
 export default function CoffeeAppAI() {
   // --- STATE ---
-  const [coffees, setCoffees] = useState(() => {
-    const saved = localStorage.getItem('coffee_log_data_v3');
-    return saved ? JSON.parse(saved) : INITIAL_DATA;
-  });
+  const [coffees, setCoffees] = useState(INITIAL_DATA);
 
   // API Key State (Lokal gespeichert, nicht im Code!)
-  const [userApiKey, setUserApiKey] = useState(() => {
-    return localStorage.getItem('user_gemini_key') || '';
-  });
+  const [userApiKey, setUserApiKey] = useState('');
+
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const [showForm, setShowForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -62,13 +59,32 @@ export default function CoffeeAppAI() {
   });
 
   // --- EFFECTS ---
+  // Load data from localStorage on mount
   useEffect(() => {
-    localStorage.setItem('coffee_log_data_v3', JSON.stringify(coffees));
-  }, [coffees]);
+    const savedCoffees = localStorage.getItem('coffee_log_data_v3');
+    if (savedCoffees) {
+      setCoffees(JSON.parse(savedCoffees));
+    }
+    
+    const savedKey = localStorage.getItem('user_gemini_key');
+    if (savedKey) {
+      setUserApiKey(savedKey);
+    }
+    
+    setIsLoaded(true);
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem('user_gemini_key', userApiKey);
-  }, [userApiKey]);
+    if (isLoaded) {
+      localStorage.setItem('coffee_log_data_v3', JSON.stringify(coffees));
+    }
+  }, [coffees, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('user_gemini_key', userApiKey);
+    }
+  }, [userApiKey, isLoaded]);
 
   // Cooldown Timer
   useEffect(() => {

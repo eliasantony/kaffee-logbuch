@@ -39,6 +39,7 @@ export default function CoffeeAppAI() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGettingAdvice, setIsGettingAdvice] = useState(false);
   const [advice, setAdvice] = useState(null);
+  const [showFullImage, setShowFullImage] = useState(false);
   const [aiError, setAiError] = useState(null);
   const [cooldown, setCooldown] = useState(0);
   const fileInputRef = useRef(null);
@@ -271,6 +272,16 @@ export default function CoffeeAppAI() {
     }
   };
 
+  const formatAdvice = (text) => {
+    if (!text) return null;
+    return text.split(/(\*\*.*?\*\*)/g).map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={index} className="font-bold text-indigo-900">{part.slice(2, -2)}</strong>;
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
+
   return (
     <div className="min-h-screen bg-stone-100 font-sans text-stone-800 pb-24">
       {/* Header */}
@@ -479,15 +490,20 @@ export default function CoffeeAppAI() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedCoffee(null)}>
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             
-            <div className="relative h-48 bg-stone-200">
+            <div className="relative h-48 bg-stone-200 group cursor-pointer" onClick={() => selectedCoffee.image && setShowFullImage(true)}>
               {selectedCoffee.image ? (
-                <img src={selectedCoffee.image} alt={selectedCoffee.name} className="w-full h-full object-cover" />
+                <>
+                  <img src={selectedCoffee.image} alt={selectedCoffee.name} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <Search className="text-white drop-shadow-md" size={32} />
+                  </div>
+                </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-stone-400">
                   <Coffee size={48} />
                 </div>
               )}
-              <button onClick={() => setSelectedCoffee(null)} className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors">
+              <button onClick={(e) => { e.stopPropagation(); setSelectedCoffee(null); }} className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors z-10">
                 <X size={20} />
               </button>
               <div className="absolute bottom-4 left-4 flex gap-2">
@@ -552,7 +568,7 @@ export default function CoffeeAppAI() {
                     </button>
                   ) : (
                     <div className="text-sm text-indigo-800 bg-white p-3 rounded-lg border border-indigo-100">
-                      {advice}
+                      {formatAdvice(advice)}
                     </div>
                   )}
                 </div>
@@ -584,6 +600,15 @@ export default function CoffeeAppAI() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+      {/* FULL IMAGE MODAL */}
+      {showFullImage && selectedCoffee && selectedCoffee.image && (
+        <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4" onClick={() => setShowFullImage(false)}>
+          <button className="absolute top-4 right-4 text-white p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
+            <X size={32} />
+          </button>
+          <img src={selectedCoffee.image} alt={selectedCoffee.name} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={e => e.stopPropagation()} />
         </div>
       )}
     </div>

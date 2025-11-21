@@ -38,7 +38,6 @@ export default function CoffeeAppAI() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGettingAdvice, setIsGettingAdvice] = useState(false);
-  const [advice, setAdvice] = useState(null);
   const [showFullImage, setShowFullImage] = useState(false);
   const [aiError, setAiError] = useState(null);
   const [cooldown, setCooldown] = useState(0);
@@ -158,7 +157,7 @@ export default function CoffeeAppAI() {
     e.preventDefault();
     
     if (editingId) {
-      setCoffees(coffees.map(c => c.id === editingId ? { ...c, ...formData } : c));
+      setCoffees(coffees.map(c => c.id === editingId ? { ...c, ...formData, advice: null } : c));
     } else {
       const newCoffee = {
         id: Date.now(),
@@ -251,7 +250,6 @@ export default function CoffeeAppAI() {
 
   const getAdvice = async (coffee) => {
     setIsGettingAdvice(true);
-    setAdvice(null);
     try {
       const response = await fetch('/api/advice', {
         method: 'POST',
@@ -263,10 +261,13 @@ export default function CoffeeAppAI() {
 
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      setAdvice(text);
+      
+      const updatedCoffees = coffees.map(c => c.id === coffee.id ? { ...c, advice: text } : c);
+      setCoffees(updatedCoffees);
+      setSelectedCoffee(prev => ({ ...prev, advice: text }));
+      
     } catch (error) {
       console.error(error);
-      setAdvice("Konnte keinen Ratschlag laden.");
     } finally {
       setIsGettingAdvice(false);
     }
@@ -561,14 +562,14 @@ export default function CoffeeAppAI() {
                     <div className="text-xs text-indigo-400 uppercase font-bold flex items-center gap-1"><Sparkles size={12}/> AI Barista</div>
                   </div>
                   
-                  {!advice ? (
+                  {!selectedCoffee.advice ? (
                     <button onClick={() => getAdvice(selectedCoffee)} disabled={isGettingAdvice} className="w-full py-2 bg-white text-indigo-600 font-bold text-sm rounded-lg border border-indigo-200 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2">
                       {isGettingAdvice ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
                       {isGettingAdvice ? "Analysiere..." : "Tipps zur Optimierung"}
                     </button>
                   ) : (
                     <div className="text-sm text-indigo-800 bg-white p-3 rounded-lg border border-indigo-100">
-                      {formatAdvice(advice)}
+                      {formatAdvice(selectedCoffee.advice)}
                     </div>
                   )}
                 </div>

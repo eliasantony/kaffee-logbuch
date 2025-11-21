@@ -17,6 +17,7 @@ const INITIAL_DATA = [
     date: "2023-10-25",
     gramsIn: "18",
     gramsOut: "300",
+    time: "150",
     link: "",
     image: null
   }
@@ -27,14 +28,8 @@ const Machines = ["Rocket Appartamento", "Sage Barista Express", "Philips Barist
 
 export default function CoffeeAppAI() {
   // --- STATE ---
-  const [coffees, setCoffees] = useState(() => {
-    // Wir prüfen, ob wir im Browser sind (Next.js Server Side Rendering Prevention)
-    if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('coffee_log_data_v3');
-        return saved ? JSON.parse(saved) : INITIAL_DATA;
-    }
-    return INITIAL_DATA;
-  });
+  const [coffees, setCoffees] = useState(INITIAL_DATA);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const [showForm, setShowForm] = useState(false);
   const [selectedCoffee, setSelectedCoffee] = useState(null);
@@ -42,6 +37,8 @@ export default function CoffeeAppAI() {
   const [filter, setFilter] = useState("Alle");
   const [searchTerm, setSearchTerm] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGettingAdvice, setIsGettingAdvice] = useState(false);
+  const [advice, setAdvice] = useState(null);
   const [aiError, setAiError] = useState(null);
   const [cooldown, setCooldown] = useState(0);
   const fileInputRef = useRef(null);
@@ -56,14 +53,25 @@ export default function CoffeeAppAI() {
     notes: '',
     gramsIn: '',
     gramsOut: '',
+    time: '',
     link: '',
     image: null
   });
 
   // --- EFFECTS ---
   useEffect(() => {
-    localStorage.setItem('coffee_log_data_v3', JSON.stringify(coffees));
-  }, [coffees]);
+    const saved = localStorage.getItem('coffee_log_data_v3');
+    if (saved) {
+      setCoffees(JSON.parse(saved));
+    }
+    setIsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('coffee_log_data_v3', JSON.stringify(coffees));
+    }
+  }, [coffees, isLoaded]);
 
   // Cooldown Timer
   useEffect(() => {
@@ -174,6 +182,7 @@ export default function CoffeeAppAI() {
       notes: '',
       gramsIn: '',
       gramsOut: '',
+      time: '',
       link: '',
       image: null
     });
@@ -193,6 +202,7 @@ export default function CoffeeAppAI() {
       notes: coffee.notes,
       gramsIn: coffee.gramsIn,
       gramsOut: coffee.gramsOut,
+      time: coffee.time || '',
       link: coffee.link,
       image: coffee.image
     });
@@ -236,6 +246,29 @@ export default function CoffeeAppAI() {
         <div className="text-center mt-1 text-xs font-bold text-stone-600">{label} ({value})</div>
       </div>
     );
+  };
+
+  const getAdvice = async (coffee) => {
+    setIsGettingAdvice(true);
+    setAdvice(null);
+    try {
+      const response = await fetch('/api/advice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(coffee)
+      });
+
+      if (!response.ok) throw new Error("Fehler beim Abrufen des Ratschlags");
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      setAdvice(text);
+    } catch (error) {
+      console.error(error);
+      setAdvice("Konnte keinen Ratschlag laden.");
+    } finally {
+      setIsGettingAdvice(false);
+    }
   };
 
   return (
@@ -317,7 +350,7 @@ export default function CoffeeAppAI() {
                           <div className="flex items-center gap-2">
                             <Scale size={14} className="text-amber-600" />
                             <span>{coffee.gramsIn || "-"}g <span className="text-stone-300">/</span> {coffee.gramsOut || "-"}g 
-                              <span className="ml-1 text-amber-600 font-bold">({calculateRatio(coffee.gramsIn, coffee.gramsOut)})</span>
+                              {coffee.time && <span className="ml-1 text-stone-400">in {coffee.time}s</span>}
                             </span>
                           </div>
                         )}
@@ -420,7 +453,10 @@ export default function CoffeeAppAI() {
                 <div className="grid grid-cols-3 gap-2">
                   <div><label className="block text-[10px] font-bold text-stone-500 uppercase mb-1">In (g)</label><input type="number" name="gramsIn" value={formData.gramsIn} onChange={handleInputChange} className="w-full p-2 bg-white rounded-lg border border-stone-200 text-sm" placeholder="18" /></div>
                   <div><label className="block text-[10px] font-bold text-stone-500 uppercase mb-1">Out (g)</label><input type="number" name="gramsOut" value={formData.gramsOut} onChange={handleInputChange} className="w-full p-2 bg-white rounded-lg border border-stone-200 text-sm" placeholder="36" /></div>
-                   <div className="h-9 self-end flex items-center justify-center bg-amber-100 rounded-lg text-amber-700 text-xs font-bold border border-amber-200">{calculateRatio(formData.gramsIn, formData.gramsOut) || "Ratio"}</div>
+                  <div><label className="block text-[10px] font-bold text-stone-500 uppercase mb-1">Zeit (s)</label><input type="number" name="time" value={formData.time} onChange={handleInputChange} className="w-full p-2 bg-white rounded-lg border border-stone-200 text-sm" placeholder="25" /></div>
+                </div>
+                <div className="flex justify-end">
+                   <div className="px-3 py-1 bg-amber-100 rounded-lg text-amber-700 text-xs font-bold border border-amber-200 inline-block">{calculateRatio(formData.gramsIn, formData.gramsOut) || "Ratio: -"}</div>
                 </div>
 
                 <div>
@@ -494,12 +530,31 @@ export default function CoffeeAppAI() {
                         <span>{selectedCoffee.gramsIn}g In</span>
                         <span className="text-stone-300">/</span>
                         <span>{selectedCoffee.gramsOut}g Out</span>
+                        {selectedCoffee.time && <span className="text-stone-400">in {selectedCoffee.time}s</span>}
                       </div>
                    </div>
                    <div className="text-right">
                       <div className="text-xs text-stone-400 uppercase font-bold mb-1">Ratio</div>
                       <div className="font-bold text-amber-600 text-lg">{calculateRatio(selectedCoffee.gramsIn, selectedCoffee.gramsOut)}</div>
                    </div>
+                </div>
+
+                {/* AI ADVICE SECTION */}
+                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="text-xs text-indigo-400 uppercase font-bold flex items-center gap-1"><Sparkles size={12}/> AI Barista</div>
+                  </div>
+                  
+                  {!advice ? (
+                    <button onClick={() => getAdvice(selectedCoffee)} disabled={isGettingAdvice} className="w-full py-2 bg-white text-indigo-600 font-bold text-sm rounded-lg border border-indigo-200 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2">
+                      {isGettingAdvice ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+                      {isGettingAdvice ? "Analysiere..." : "Tipps zur Optimierung"}
+                    </button>
+                  ) : (
+                    <div className="text-sm text-indigo-800 bg-white p-3 rounded-lg border border-indigo-100">
+                      {advice}
+                    </div>
+                  )}
                 </div>
 
                 {selectedCoffee.notes && (

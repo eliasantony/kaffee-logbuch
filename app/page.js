@@ -342,10 +342,13 @@ export default function CoffeeAppAI() {
 
   const handleAddShot = (coffee) => {
       // Pre-fill product info but clear shot info
+      // Use the machine from the most recent shot (first in array) if available
+      const lastMachine = coffee.shots && coffee.shots.length > 0 ? coffee.shots[0].machine : '';
+
       setFormData({
         name: coffee.name,
         roaster: coffee.roaster,
-        machine: '', // Or keep last used? Let's clear for now or maybe keep machine
+        machine: lastMachine,
         grind: '',
         method: 'Siebträger',
         tasteProfile: 50,

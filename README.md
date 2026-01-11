@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Barista Log (Kaffee Logbuch) ☕️
+
+A smart coffee tracking application built with Next.js and powered by AI to help you dial in the perfect shot.
+
+## Features
+
+- **Detailed Logging**: Track every detail of your coffee brewing process, including Bean, Roaster, Grind Size, Dose (In/Out), Time, and Machine.
+- **Multiple Brewing Methods**: Support for Espresso (Siebträger), French Press, Filter, Mokka Pot, Cold Brew, and more.
+- **Visual Taste Profile**: Record the taste balance (Sour vs Bitter) with an intuitive visual slider.
+- **AI-Powered Analysis**: Upload a photo of your coffee bag, and let Gemini AI automatically extract details like Name, Roaster, and Notes.
+- **Smart Advice**: Get AI-generated feedback on your shots to improve your extraction and taste.
+- **History Tracking**: Keep a history of multiple shots per coffee to see how your recipe evolves.
+- **Search & Filter**: Easily find past brews by name, roaster, or brewing method.
+- **Local Storage**: Your data is saved locally in your browser, ensuring privacy and persistence without a backend database for user data.
+
+## Tech Stack
+
+- **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
+- **Library**: [React 19](https://react.dev/)
+- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **AI/LLM**: [Google Gemini API](https://ai.google.dev/)
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+You will need a Google Gemini API Key. You can get one from [Google AI Studio](https://aistudio.google.com/).
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd kaffee-logbuch
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. Install dependencies:
+   ```bash
+   npm install
+   # or
+   yarn install
+   # or
+   pnpm install
+   ```
 
-## Learn More
+3. Configure Environment Variables:
+   Create a `.env.local` file in the root directory and add your Gemini API Key:
+   ```env
+   GEMINI_API_KEY=your_api_key_here
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+4. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. Open [http://localhost:3000](http://localhost:3000) with your browser to see the app.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project Structure
 
-## Deploy on Vercel
+- `app/page.js`: Main application logic (Client Component). Handles state, UI, and user interactions.
+- `app/api/analyze/route.js`: Server-side API route for processing image analysis with Gemini.
+- `app/api/advice/route.js`: Server-side API route for generating brewing advice with Gemini.
+- `app/globals.css`: Tailwind CSS imports and global styles.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Usage
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Add a Coffee**: Click the "New Entry" button or the "+" icon.
+2. **Scan**: Click the camera icon to upload/take a photo of your coffee bag for auto-filling details.
+3. **Log Shot**: Enter your brewing parameters (Grind, Time, Ratio).
+4. **Refine**: If a shot isn't perfect, use the "Get Advice" feature and adjust parameters in your next shot.
